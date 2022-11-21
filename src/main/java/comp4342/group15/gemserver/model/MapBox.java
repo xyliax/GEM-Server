@@ -4,7 +4,10 @@ import java.util.List;
 import java.util.Map;
 
 public final class MapBox {
-    private static final char[] template = """
+    private static final char[] locTemplate = """
+            https://restapi.amap.com/v3/geocode/regeo?key=5d89340cbb3df5b10f110c35142985e2&location=~X,~Y&poitype=&radius=10&extensions=base&batch=false&roadlevel=1
+            """.toCharArray();
+    private static final char[] mapTemplate = """
             <!DOCTYPE html>
             <html>
             <head>
@@ -268,17 +271,17 @@ public final class MapBox {
     public static String getHTML(String x, String y, List<Map<String, Object>> postList) {
         StringBuilder builder = new StringBuilder();
         int cnt = 0;
-        for (int index = 0; index < template.length; index++) {
-            if (template[index] == '~') {
-                if (template[index + 1] == 'U') {
-                    if (template[index + 2] == 'X')
+        for (int index = 0; index < mapTemplate.length; index++) {
+            if (mapTemplate[index] == '~') {
+                if (mapTemplate[index + 1] == 'U') {
+                    if (mapTemplate[index + 2] == 'X')
                         builder.append(x);
-                    else if (template[index + 2] == 'Y')
+                    else if (mapTemplate[index + 2] == 'Y')
                         builder.append(y);
                     index += 2;
-                } else if (template[index + 1] == 'P' && cnt < postList.size()) {
+                } else if (mapTemplate[index + 1] == 'P' && cnt < postList.size()) {
                     Map<String, Object> post = postList.get(cnt);
-                    if (template[index + 2] == 'M') {
+                    if (mapTemplate[index + 2] == 'M') {
                         String message = String.valueOf(post.get("message"));
                         message = message.replace("<", "&lt;");
                         message = message.replace("\"", "");
@@ -287,15 +290,29 @@ public final class MapBox {
                         message = message.replace("\n", "\\n");
                         message = message.replace("\r", "\\r");
                         builder.append(message);
-                    } else if (template[index + 2] == 'N')
+                    } else if (mapTemplate[index + 2] == 'N')
                         builder.append(post.get("pic_name"));
-                    else if (template[index + 2] == 'C') {
+                    else if (mapTemplate[index + 2] == 'C') {
                         builder.append(post.get("location"));
                         cnt++;
                     }
                     index += 2;
                 }
-            } else builder.append(template[index]);
+            } else builder.append(mapTemplate[index]);
+        }
+        return builder.toString();
+    }
+
+    public static String getLocation(String x, String y) {
+        StringBuilder builder = new StringBuilder();
+        for (int index = 0; index < locTemplate.length; index++) {
+            if (locTemplate[index] == '~') {
+                if (locTemplate[index + 1] == 'X')
+                    builder.append(x);
+                else if (locTemplate[index + 1] == 'Y')
+                    builder.append(y);
+                index++;
+            } else builder.append(locTemplate[index]);
         }
         return builder.toString();
     }

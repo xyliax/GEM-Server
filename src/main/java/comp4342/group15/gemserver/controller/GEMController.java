@@ -1,24 +1,29 @@
 package comp4342.group15.gemserver.controller;
 
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONObject;
 import comp4342.group15.gemserver.dao.MySqlRepository;
 import comp4342.group15.gemserver.model.MapBox;
 import comp4342.group15.gemserver.model.Post;
 import comp4342.group15.gemserver.model.Response;
 import comp4342.group15.gemserver.model.User;
 import org.apache.tomcat.util.codec.binary.Base64;
+import org.imgscalr.Scalr;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 
 import javax.annotation.Resource;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.*;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
 import static comp4342.group15.gemserver.model.Response.*;
+import static org.imgscalr.Scalr.OP_ANTIALIAS;
 
 @RestController
 public final class GEMController {
@@ -85,7 +90,6 @@ public final class GEMController {
         if (!user.getIdentifier().equals(identifier))
             return fail("Session Expired!");
         String picName = String.format("%s@%s", username, new Date().toString().replace(' ', '-'));
-        mySqlRepository.insertPost(new Post("", user.getUserId(), message, location, "", picName));
         byte[] bytes = Base64.decodeBase64(pictureRaw);
         File picPath = new File("/opt/GEM-Server/public/picture");
         File tbnPath = new File("/opt/GEM-Server/public/thumbnail");
@@ -93,12 +97,19 @@ public final class GEMController {
         if (!tbnPath.exists()) tbnPath.mkdirs();
         try (OutputStream stream = new FileOutputStream(new File(picPath, picName))) {
             stream.write(bytes);
-        } catch (IOException ignored) {
+        } catch (IOException ioException) {
+            throw new RuntimeException(ioException);
         }
         try (OutputStream stream = new FileOutputStream(new File(tbnPath, picName))) {
-            stream.write(bytes);
-        } catch (IOException ignored) {
+            ByteArrayOutputStream thumbOutput = new ByteArrayOutputStream();
+            BufferedImage img = ImageIO.read(new ByteArrayInputStream(bytes));
+            BufferedImage thumbImg = Scalr.resize(img, Scalr.Method.AUTOMATIC, Scalr.Mode.AUTOMATIC, 100, OP_ANTIALIAS);
+            ImageIO.write(thumbImg, "png", thumbOutput);
+            stream.write(thumbOutput.toByteArray());
+        } catch (IOException ioException) {
+            throw new RuntimeException(ioException);
         }
+        mySqlRepository.insertPost(new Post("", user.getUserId(), message, location, "", picName));
         return success("Posted!");
     }
 
@@ -110,5 +121,18 @@ public final class GEMController {
     @GetMapping(value = "/map", produces = MediaType.TEXT_HTML_VALUE)
     public String showMap(@RequestParam("X") String x, @RequestParam("Y") String y) {
         return MapBox.getHTML(x, y, mySqlRepository.retrieveTrend());
+    }
+
+    @GetMapping(value = "/loc")
+    public String showLoc(@RequestParam("X") String x, @RequestParam("Y") String y) {
+        ResponseEntity<String> response = new RestTemplate().getForEntity(MapBox.getLocation(x, y), String.class);
+        String body = response.getBody();
+        JSONObject jsonObject = JSON.parseObject(body);
+        if (jsonObject == null || !jsonObject.get("status").equals("1")) return "Unknown";
+        if (jsonObject.get("regeocode") == null) return "Unknown";
+        String geo = jsonObject.get("regeocode").toString();
+        JSONObject regeocode = JSON.parseObject(geo);
+        String loc = regeocode.get("formatted_address").toString();
+        return loc == null ? "Unknown" : loc;
     }
 }
