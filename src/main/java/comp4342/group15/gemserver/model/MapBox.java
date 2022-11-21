@@ -14,8 +14,8 @@ public final class MapBox {
             <meta charset="utf-8">
             <title>Add custom icons with Markers</title>
             <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
-            <link href="https://api.mapbox.com/mapbox-gl-js/v2.10.0/mapbox-gl.css" rel="stylesheet">
-            <script src="https://api.mapbox.com/mapbox-gl-js/v2.10.0/mapbox-gl.js"></script>
+            <link href="https://api.mapbox.com/mapbox-gl-js/v2.11.0/mapbox-gl.css" rel="stylesheet">
+            <script src="https://api.mapbox.com/mapbox-gl-js/v2.11.0/mapbox-gl.js"></script>
             <style>
             body { margin: 0; padding: 0; }
             #map { position: absolute; top: 0; bottom: 0; width: 100%; }
@@ -35,6 +35,16 @@ public final class MapBox {
             <div id="map"></div>
             \s
             <script>
+            (function(){
+            window.alert = function(name){
+            var iframe = document.createElement("IFRAME");
+            iframe.style.display="none";
+            iframe.setAttribute("src", 'data:text/plain');
+            document.documentElement.appendChild(iframe);
+            window.frames[0].window.alert(name);
+            iframe.parentNode.removeChild(iframe);
+            }
+            })();
             	mapboxgl.accessToken = 'pk.eyJ1IjoiaGFuamlhbWluZyIsImEiOiJjbDYzZ29hZWIwY2l5M29uam5taTc0MjJqIn0.tcjuacfyZfjsHR3B3aIQyA';
             const geojson = {
             'type': 'FeatureCollection',
@@ -237,7 +247,7 @@ public final class MapBox {
             const map = new mapboxgl.Map({
             container: 'map',
             // Choose from Mapbox's core styles, or make your own style with Mapbox Studio
-            style: 'mapbox://styles/mapbox/streets-v11',
+            style: 'mapbox://styles/mapbox/streets-v12',
             center: [~UX, ~UY],
             zoom: 15
             });
