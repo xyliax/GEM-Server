@@ -18,9 +18,7 @@ import javax.annotation.Resource;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.*;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static comp4342.group15.gemserver.model.Response.*;
 import static org.imgscalr.Scalr.OP_ANTIALIAS;
@@ -134,5 +132,69 @@ public final class GEMController {
         JSONObject regeocode = JSON.parseObject(geo);
         String loc = regeocode.get("formatted_address").toString();
         return loc == null ? "Unknown" : loc;
+    }
+
+    @GetMapping(value = "/trend-ai")
+    public List<Post> aiRecommendation(List<Post> postList, List<Post> userPostList) {
+        Map<Post, Integer> result1 = new HashMap<>();
+        for (Post post : postList) {
+            int rating_sum = 0;
+            for (Post userPost : userPostList)
+                rating_sum += StringSimilarity.similarity(post.getMessage(), userPost.getMessage());
+            result1.put(post, rating_sum / userPostList.size());
+        }
+        Map<Objects, Integer> result = MapUtil.sortByValue(result1);
+        return (List) result.keySet();
+    }
+}
+
+class StringSimilarity {
+    public static double similarity(String s1, String s2) {
+        String longer = s1, shorter = s2;
+        if (s1.length() < s2.length()) { // longer should always have greater length
+            longer = s2;
+            shorter = s1;
+        }
+        int longerLength = longer.length();
+        if (longerLength == 0)
+            return 1.0;
+        return (longerLength - editDistance(longer, shorter)) / (double) longerLength;
+
+    }
+
+    public static int editDistance(String s1, String s2) {
+        s1 = s1.toLowerCase();
+        s2 = s2.toLowerCase();
+
+        int[] costs = new int[s2.length() + 1];
+        for (int i = 0; i <= s1.length(); i++) {
+            int lastValue = i;
+            for (int j = 0; j <= s2.length(); j++) {
+                if (i == 0) costs[j] = j;
+                else {
+                    if (j > 0) {
+                        int newValue = costs[j - 1];
+                        if (s1.charAt(i - 1) != s2.charAt(j - 1))
+                            newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
+                        costs[j - 1] = lastValue;
+                        lastValue = newValue;
+                    }
+                }
+            }
+            if (i > 0) costs[s2.length()] = lastValue;
+        }
+        return costs[s2.length()];
+    }
+}
+
+class MapUtil {
+    public static <Post, V extends Comparable<? super V>> Map<Objects, V> sortByValue(Map<Post, V> map) {
+        List<Map.Entry<Post, V>> list = new ArrayList<>(map.entrySet());
+        list.sort(Map.Entry.comparingByValue());
+        Map<Objects, V> result = new LinkedHashMap<>();
+        for (Map.Entry<Post, V> entry : list) {
+            result.put((Objects) entry.getKey(), entry.getValue());
+        }
+        return result;
     }
 }
